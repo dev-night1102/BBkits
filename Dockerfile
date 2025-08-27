@@ -46,8 +46,10 @@ COPY --from=frontend /app/public ./public
 # Create SQLite database (if used)
 RUN mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database
 
-# Install PHP dependencies
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+# Clear composer cache and install PHP dependencies
+RUN rm -rf vendor && \
+    composer clear-cache && \
+    composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
 # Ensure Laravel cache/storage folders exist
 RUN mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs \
