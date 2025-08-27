@@ -46,12 +46,26 @@ COPY . .
 COPY --from=frontend /app/public ./public
 
 # Create SQLite database (if used) and setup .env
-RUN mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database && \
-    if [ ! -f .env ]; then cp .env.example .env; fi && \
-    php artisan key:generate || true && \
-    sed -i 's|APP_URL=.*|APP_URL=https://bbkits.onrender.com|g' .env && \
-    sed -i 's|APP_ENV=.*|APP_ENV=production|g' .env && \
-    sed -i 's|APP_DEBUG=.*|APP_DEBUG=false|g' .env
+RUN mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database
+
+# Setup .env file
+RUN if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env; fi && \
+    if [ -f .env ]; then \
+        sed -i 's|APP_URL=.*|APP_URL=https://bbkits.onrender.com|g' .env && \
+        sed -i 's|APP_ENV=.*|APP_ENV=production|g' .env && \
+        sed -i 's|APP_DEBUG=.*|APP_DEBUG=false|g' .env; \
+    else \
+        echo "APP_NAME=BBKits" > .env && \
+        echo "APP_ENV=production" >> .env && \
+        echo "APP_KEY=" >> .env && \
+        echo "APP_DEBUG=false" >> .env && \
+        echo "APP_URL=https://bbkits.onrender.com" >> .env && \
+        echo "DB_CONNECTION=sqlite" >> .env && \
+        echo "SESSION_DRIVER=database" >> .env && \
+        echo "CACHE_STORE=database" >> .env && \
+        echo "QUEUE_CONNECTION=database" >> .env; \
+    fi && \
+    php artisan key:generate --force || true
 
 # Clear composer cache and install PHP dependencies
 RUN rm -rf vendor && \
