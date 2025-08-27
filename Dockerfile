@@ -43,8 +43,10 @@ COPY . .
 # Copy built frontend
 COPY --from=frontend /app/public ./public
 
-# Create SQLite database (if used)
-RUN mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database
+# Create SQLite database (if used) and setup .env
+RUN mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database && \
+    if [ ! -f .env ]; then cp .env.example .env; fi && \
+    php artisan key:generate || true
 
 # Clear composer cache and install PHP dependencies
 RUN rm -rf vendor && \
@@ -64,11 +66,11 @@ EXPOSE 10000
 CMD mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs && \
     chmod -R 775 storage bootstrap/cache database && \
     chown -R www-data:www-data storage bootstrap/cache database && \
-    php artisan config:clear && \
-    php artisan cache:clear && \
-    php artisan view:clear || true && \
-    php artisan optimize && \
     php artisan migrate --force && \
     php artisan db:seed --force && \
-    php artisan receipts:migrate-to-base64 && \
+    php artisan config:clear || true && \
+    php artisan cache:clear || true && \
+    php artisan view:clear || true && \
+    php artisan optimize && \
+    php artisan receipts:migrate-to-base64 || true && \
     php artisan serve --host=0.0.0.0 --port=10000
