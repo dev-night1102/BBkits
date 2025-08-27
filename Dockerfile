@@ -42,8 +42,8 @@ WORKDIR /var/www
 # Copy backend files
 COPY . .
 
-# Copy built frontend
-COPY --from=frontend /app/public ./public
+# Copy built frontend assets only (not entire public directory)
+COPY --from=frontend /app/public/build ./public/build
 
 # Make sure server.php is executable
 RUN chmod +x server.php
