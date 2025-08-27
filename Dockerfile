@@ -23,14 +23,16 @@ RUN npm run build
 # ------------------------------
 # 2. Build Laravel Backend
 # ------------------------------
-FROM php:8.2-cli AS backend
+FROM php:8.2-fpm AS backend
 
 # Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
-    libpng-dev libonig-dev libxml2-dev libsqlite3-dev pkg-config zip unzip curl git \
+    libpng-dev libonig-dev libxml2-dev libsqlite3-dev sqlite3 pkg-config zip unzip curl git \
  && docker-php-ext-configure pdo_sqlite \
  && docker-php-ext-install pdo pdo_mysql pdo_sqlite mbstring exif pcntl bcmath gd \
- && apt-get clean && rm -rf /var/lib/apt/lists/*
+ && apt-get clean && rm -rf /var/lib/apt/lists/* \
+ && php -r "if (!extension_loaded('pdo_sqlite')) { exit(1); }" \
+ && echo "PDO SQLite extension successfully installed"
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -46,7 +48,10 @@ COPY --from=frontend /app/public ./public
 # Create SQLite database (if used) and setup .env
 RUN mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database && \
     if [ ! -f .env ]; then cp .env.example .env; fi && \
-    php artisan key:generate || true
+    php artisan key:generate || true && \
+    sed -i 's|APP_URL=.*|APP_URL=https://bbkits.onrender.com|g' .env && \
+    sed -i 's|APP_ENV=.*|APP_ENV=production|g' .env && \
+    sed -i 's|APP_DEBUG=.*|APP_DEBUG=false|g' .env
 
 # Clear composer cache and install PHP dependencies
 RUN rm -rf vendor && \
@@ -66,6 +71,7 @@ EXPOSE 10000
 CMD mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs && \
     chmod -R 775 storage bootstrap/cache database && \
     chown -R www-data:www-data storage bootstrap/cache database && \
+    php -r "if (!extension_loaded('pdo_sqlite')) { echo 'ERROR: PDO SQLite not loaded'; exit(1); }" && \
     php artisan migrate --force && \
     php artisan db:seed --force && \
     php artisan config:clear || true && \
@@ -73,4 +79,4 @@ CMD mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/lo
     php artisan view:clear || true && \
     php artisan optimize && \
     php artisan receipts:migrate-to-base64 || true && \
-    php artisan serve --host=0.0.0.0 --port=10000
+    php -S 0.0.0.0:10000 -t public public/index.php
