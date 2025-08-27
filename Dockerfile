@@ -45,6 +45,9 @@ COPY . .
 # Copy built frontend
 COPY --from=frontend /app/public ./public
 
+# Make sure server.php is executable
+RUN chmod +x server.php
+
 # Create SQLite database (if used) and setup .env
 RUN mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database
 
@@ -93,4 +96,4 @@ CMD mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/lo
     php artisan view:clear || true && \
     php artisan optimize && \
     php artisan receipts:migrate-to-base64 || true && \
-    php -S 0.0.0.0:10000 -t public public/index.php
+    php -S 0.0.0.0:10000 server.php
