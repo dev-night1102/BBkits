@@ -356,11 +356,6 @@ class Sale extends Model
         return $this->order_status === 'payment_approved';
     }
 
-    public function canSendPhoto(): bool
-    {
-        return $this->order_status === 'in_production' && $this->product_photo;
-    }
-
     public function canShip(): bool
     {
         return $this->order_status === 'ready_for_shipping' && 
