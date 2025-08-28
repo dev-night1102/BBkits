@@ -1,66 +1,65 @@
 <?php
 
 /**
- * Laravel development server router.
- * This file allows PHP built-in server to serve static files.
+ * Laravel production server router for PHP built-in server.
+ * Handles static files including Vite build assets.
  */
 
 $uri = urldecode(
     parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
 );
 
-// Serve static files from public directory
-$filePath = __DIR__ . '/public' . $uri;
+// Define the document root
+$publicPath = __DIR__ . '/public';
 
-if ($uri !== '/' && file_exists($filePath) && !is_dir($filePath)) {
-    // Get the file extension
-    $extension = strtolower(pathinfo($uri, PATHINFO_EXTENSION));
+// Build the full file path
+$filePath = $publicPath . $uri;
+
+// Check if this is a static file request
+if ($uri !== '/' && file_exists($filePath) && is_file($filePath)) {
+    // Determine the content type based on file extension
+    $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
     
-    // Set appropriate content type
-    switch ($extension) {
-        case 'css':
-            header('Content-Type: text/css; charset=utf-8');
-            break;
-        case 'js':
-            header('Content-Type: application/javascript; charset=utf-8');
-            break;
-        case 'png':
-            header('Content-Type: image/png');
-            break;
-        case 'jpg':
-        case 'jpeg':
-            header('Content-Type: image/jpeg');
-            break;
-        case 'gif':
-            header('Content-Type: image/gif');
-            break;
-        case 'svg':
-            header('Content-Type: image/svg+xml');
-            break;
-        case 'ico':
-            header('Content-Type: image/x-icon');
-            break;
-        case 'woff':
-            header('Content-Type: font/woff');
-            break;
-        case 'woff2':
-            header('Content-Type: font/woff2');
-            break;
-        case 'ttf':
-            header('Content-Type: font/ttf');
-            break;
-        case 'json':
-            header('Content-Type: application/json');
-            break;
+    $mimeTypes = [
+        'css' => 'text/css',
+        'js' => 'application/javascript',
+        'json' => 'application/json',
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'svg' => 'image/svg+xml',
+        'ico' => 'image/x-icon',
+        'woff' => 'font/woff',
+        'woff2' => 'font/woff2',
+        'ttf' => 'font/ttf',
+        'otf' => 'font/otf',
+        'eot' => 'application/vnd.ms-fontobject',
+        'webp' => 'image/webp',
+        'map' => 'application/json',
+    ];
+    
+    // Set the appropriate content type
+    if (isset($mimeTypes[$extension])) {
+        header('Content-Type: ' . $mimeTypes[$extension]);
     }
     
-    // Add cache headers for assets
-    if (strpos($uri, '/build/assets/') !== false) {
-        header('Cache-Control: public, max-age=31536000');
+    // Add cache headers for build assets
+    if (strpos($uri, '/build/') !== false || strpos($uri, '/assets/') !== false) {
+        header('Cache-Control: public, max-age=31536000, immutable');
     }
     
-    return false; // Serve the requested resource as-is
+    // Read and output the file
+    readfile($filePath);
+    exit;
 }
 
-// Route everything else through Laravel
-require_once __DIR__.'/public/index.php';
+// Check if request is for a directory index
+if (is_dir($filePath) && file_exists($filePath . '/index.html')) {
+    header('Content-Type: text/html');
+    readfile($filePath . '/index.html');
+    exit;
+}
+
+// Route all other requests through Laravel
+require_once __DIR__ . '/public/index.php';
