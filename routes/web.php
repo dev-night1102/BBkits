@@ -13,6 +13,34 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Health check endpoint for debugging
+Route::get('/health', function () {
+    try {
+        $dbConnected = \DB::connection()->getPdo() ? 'OK' : 'Failed';
+        return response()->json([
+            'status' => 'healthy',
+            'database' => $dbConnected,
+            'php_version' => PHP_VERSION,
+            'laravel_version' => Application::VERSION,
+            'extensions' => [
+                'pdo_sqlite' => extension_loaded('pdo_sqlite'),
+                'sqlite3' => extension_loaded('sqlite3'),
+            ],
+            'env' => [
+                'APP_ENV' => config('app.env'),
+                'DB_CONNECTION' => config('database.default'),
+                'DB_DATABASE' => config('database.connections.sqlite.database'),
+            ]
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),

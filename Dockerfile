@@ -56,7 +56,9 @@ RUN if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env; fi && \
     if [ -f .env ]; then \
         sed -i 's|APP_URL=.*|APP_URL=https://bbkits.onrender.com|g' .env && \
         sed -i 's|APP_ENV=.*|APP_ENV=production|g' .env && \
-        sed -i 's|APP_DEBUG=.*|APP_DEBUG=false|g' .env; \
+        sed -i 's|APP_DEBUG=.*|APP_DEBUG=false|g' .env && \
+        sed -i 's|LOG_LEVEL=.*|LOG_LEVEL=error|g' .env && \
+        sed -i 's|DB_DATABASE=.*|DB_DATABASE=/var/www/database/database.sqlite|g' .env; \
     else \
         echo "APP_NAME=BBKits" > .env && \
         echo "APP_ENV=production" >> .env && \
@@ -64,9 +66,11 @@ RUN if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env; fi && \
         echo "APP_DEBUG=false" >> .env && \
         echo "APP_URL=https://bbkits.onrender.com" >> .env && \
         echo "DB_CONNECTION=sqlite" >> .env && \
+        echo "DB_DATABASE=/var/www/database/database.sqlite" >> .env && \
         echo "SESSION_DRIVER=database" >> .env && \
         echo "CACHE_STORE=database" >> .env && \
-        echo "QUEUE_CONNECTION=database" >> .env; \
+        echo "QUEUE_CONNECTION=database" >> .env && \
+        echo "LOG_LEVEL=error" >> .env; \
     fi && \
     php artisan key:generate --force || true
 
@@ -85,15 +89,28 @@ EXPOSE 10000
 # ------------------------------
 # 3. Runtime Commands
 # ------------------------------
-CMD mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs && \
+CMD set -e && \
+    echo "=== Starting BBKits Application ===" && \
+    mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs && \
     chmod -R 775 storage bootstrap/cache database && \
     chown -R www-data:www-data storage bootstrap/cache database && \
+    echo "=== Checking PHP Extensions ===" && \
     php -r "if (!extension_loaded('pdo_sqlite')) { echo 'ERROR: PDO SQLite not loaded'; exit(1); }" && \
+    echo "PDO SQLite is loaded ✓" && \
+    echo "=== Checking Database File ===" && \
+    ls -la database/database.sqlite && \
+    echo "=== Running Migrations ===" && \
     php artisan migrate --force && \
-    php artisan db:seed --force && \
+    echo "=== Seeding Database ===" && \
+    (php artisan db:seed --force || echo "Database seeding failed, continuing...") && \
+    echo "=== Clearing Caches ===" && \
     php artisan config:clear || true && \
     php artisan cache:clear || true && \
     php artisan view:clear || true && \
+    echo "=== Optimizing Application ===" && \
     php artisan optimize && \
+    echo "=== Running Custom Commands ===" && \
     php artisan receipts:migrate-to-base64 || true && \
+    echo "=== Starting Web Server ===" && \
+    echo "Application ready! Starting server on port 10000..." && \
     php -S 0.0.0.0:10000 server.php
