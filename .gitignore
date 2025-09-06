@@ -1,0 +1,37 @@
+# Laravel / PHP
+/vendor/
+.env
+.env.*
+.phpunit.result.cache
+.phpactor.json
+.phpunit.cache
+Homestead.yaml
+Homestead.json
+storage/*.key
+/storage/oauth-private.key
+/storage/oauth-public.key
+/storage/pail
+
+# SQLite (optional)
+# database/*.sqlite
+# database/*.sqlite3
+
+# Node / Frontend
+/node_modules/
+# public/build/
+public/hot/
+public/mix-manifest.json
+
+# IDEs / Editors
+/.idea/
+/.vscode/
+/.fleet/
+/.zed/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Others
+auth.json
+*.log
