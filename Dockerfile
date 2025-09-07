@@ -54,7 +54,7 @@ RUN chmod +x server.php
 # Create SQLite database (if used) and setup .env
 RUN mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database
 
-# Setup .env file
+# Setup .env file (without key:generate yet)
 RUN if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env; fi && \
     if [ -f .env ]; then \
         sed -i 's|APP_URL=.*|APP_URL=https://bbkits.onrender.com|g' .env && \
@@ -74,12 +74,14 @@ RUN if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env; fi && \
         echo "CACHE_STORE=database" >> .env && \
         echo "QUEUE_CONNECTION=database" >> .env && \
         echo "LOG_LEVEL=error" >> .env; \
-    fi && \
-    php artisan key:generate --force || true
+    fi
 
 # Clear composer cache and install PHP dependencies
 RUN composer clear-cache && \
     composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --verbose
+
+# Generate application key AFTER composer install
+RUN php artisan key:generate --force || true
 
 # Ensure Laravel cache/storage folders exist
 RUN mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs \
