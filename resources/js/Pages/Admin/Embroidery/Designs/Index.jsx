@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 
 export default function Index({ auth, designs, categories, filters }) {
+    // State management - simplified approach
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingDesign, setEditingDesign] = useState(null);
-    const [search, setSearch] = useState((filters && filters.search) || '');
-    const [category, setCategory] = useState((filters && filters.category) || 'all');
-    const [status, setStatus] = useState((filters && filters.status) || 'all');
-
-    const { data: createData, setData: setCreateData, post, processing: createProcessing, errors: createErrors, reset: resetCreate } = useForm({
+    const [isLoading, setIsLoading] = useState(false);
+    
+    // Search filters - direct state management
+    const [searchTerm, setSearchTerm] = useState((filters?.search) || '');
+    const [selectedCategory, setSelectedCategory] = useState((filters?.category) || 'all');
+    const [selectedStatus, setSelectedStatus] = useState((filters?.status) || 'all');
+    
+    // Form data - separate objects instead of useForm
+    const [createFormData, setCreateFormData] = useState({
         name: '',
         slug: '',
         description: '',
@@ -23,92 +28,11 @@ export default function Index({ auth, designs, categories, filters }) {
         compatible_positions: [],
         compatible_colors: []
     });
+    
+    const [editFormData, setEditFormData] = useState({});
+    const [formErrors, setFormErrors] = useState({});
 
-    const { data: editData, setData: setEditData, put, processing: editProcessing, errors: editErrors, reset: resetEdit } = useForm({
-        name: '',
-        slug: '',
-        description: '',
-        category: '',
-        image_url: '',
-        design_file_url: '',
-        additional_cost: 0,
-        is_active: true,
-        sort_order: 0,
-        compatible_positions: [],
-        compatible_colors: []
-    });
-
-    // Removed problematic useForm for delete
-
-    const handleSearch = (e) => {
-        e.preventDefault();
-        router.get(route('admin.embroidery.designs.index'), {
-            search,
-            category,
-            status
-        }, {
-            preserveState: true,
-            preserveScroll: true
-        });
-    };
-
-    const handleCreate = (e) => {
-        e.preventDefault();
-        post(route('admin.embroidery.designs.store'), {
-            onSuccess: () => {
-                setShowCreateModal(false);
-                resetCreate();
-            }
-        });
-    };
-
-    const handleEdit = (e) => {
-        e.preventDefault();
-        if (!editingDesign || !editingDesign.id) {
-            console.error('No design selected for editing');
-            return;
-        }
-        put(route('admin.embroidery.designs.update', editingDesign.id), {
-            onSuccess: () => {
-                setShowEditModal(false);
-                setEditingDesign(null);
-                resetEdit();
-            },
-            onError: (errors) => {
-                console.error('Edit failed:', errors);
-            }
-        });
-    };
-
-    const handleDelete = (design) => {
-        alert('Função de deletar temporariamente desabilitada');
-        return;
-        // Commented out to avoid useForm issues
-        // if (!design || !design.id) return;
-        // if (confirm(`Tem certeza que deseja excluir o design "${design.name}"?`)) {
-        //     router.delete(route('admin.embroidery.designs.destroy', design.id));
-        // }
-    };
-
-    const openEditModal = (design) => {
-        if (!design) return;
-        setEditingDesign(design);
-        setEditData({
-            name: design.name || '',
-            slug: design.slug || '',
-            description: design.description || '',
-            category: design.category || '',
-            image_url: design.image_url || '',
-            design_file_url: design.design_file_url || '',
-            additional_cost: design.additional_cost || 0,
-            is_active: design.is_active ?? true,
-            sort_order: design.sort_order || 0,
-            compatible_positions: design.compatible_positions || [],
-            compatible_colors: design.compatible_colors || []
-        });
-        setShowEditModal(true);
-    };
-
+    // Utility functions
     const generateSlug = (name) => {
         return name.toLowerCase()
             .replace(/[àáâãäå]/g, 'a')
@@ -120,6 +44,135 @@ export default function Index({ auth, designs, categories, filters }) {
             .replace(/[^a-z0-9\s]/g, '')
             .replace(/\s+/g, '-')
             .trim();
+    };
+
+    const resetCreateForm = () => {
+        setCreateFormData({
+            name: '',
+            slug: '',
+            description: '',
+            category: '',
+            image_url: '',
+            design_file_url: '',
+            additional_cost: 0,
+            is_active: true,
+            sort_order: 0,
+            compatible_positions: [],
+            compatible_colors: []
+        });
+        setFormErrors({});
+    };
+
+    // Event handlers - using router directly instead of useForm
+    const handleSearch = (e) => {
+        e.preventDefault();
+        const params = {};
+        if (searchTerm) params.search = searchTerm;
+        if (selectedCategory !== 'all') params.category = selectedCategory;
+        if (selectedStatus !== 'all') params.status = selectedStatus;
+        
+        router.get(route('admin.embroidery.designs.index'), params, {
+            preserveState: true,
+            preserveScroll: true
+        });
+    };
+
+    const handleCreate = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setFormErrors({});
+        
+        router.post(route('admin.embroidery.designs.store'), createFormData, {
+            onSuccess: () => {
+                setShowCreateModal(false);
+                resetCreateForm();
+                setIsLoading(false);
+            },
+            onError: (errors) => {
+                setFormErrors(errors);
+                setIsLoading(false);
+            },
+            onFinish: () => {
+                setIsLoading(false);
+            }
+        });
+    };
+
+    const handleEdit = async (e) => {
+        e.preventDefault();
+        if (!editingDesign?.id) return;
+        
+        setIsLoading(true);
+        setFormErrors({});
+        
+        router.put(route('admin.embroidery.designs.update', editingDesign.id), editFormData, {
+            onSuccess: () => {
+                setShowEditModal(false);
+                setEditingDesign(null);
+                setEditFormData({});
+                setIsLoading(false);
+            },
+            onError: (errors) => {
+                setFormErrors(errors);
+                setIsLoading(false);
+            },
+            onFinish: () => {
+                setIsLoading(false);
+            }
+        });
+    };
+
+    const handleDelete = (design) => {
+        if (!design?.id) return;
+        
+        const confirmed = confirm(`Tem certeza que deseja excluir o design "${design.name}"?`);
+        if (!confirmed) return;
+        
+        setIsLoading(true);
+        router.delete(route('admin.embroidery.designs.destroy', design.id), {
+            onSuccess: () => {
+                setIsLoading(false);
+            },
+            onError: (error) => {
+                alert('Erro ao excluir o design');
+                setIsLoading(false);
+            },
+            onFinish: () => {
+                setIsLoading(false);
+            }
+        });
+    };
+
+    const openEditModal = (design) => {
+        if (!design) return;
+        
+        setEditingDesign(design);
+        setEditFormData({
+            name: design.name || '',
+            slug: design.slug || '',
+            description: design.description || '',
+            category: design.category || '',
+            image_url: design.image_url || '',
+            design_file_url: design.design_file_url || '',
+            additional_cost: design.additional_cost || 0,
+            is_active: design.is_active !== false, // Handle boolean properly
+            sort_order: design.sort_order || 0,
+            compatible_positions: design.compatible_positions || [],
+            compatible_colors: design.compatible_colors || []
+        });
+        setFormErrors({});
+        setShowEditModal(true);
+    };
+
+    const updateCreateForm = (field, value) => {
+        setCreateFormData(prev => ({ ...prev, [field]: value }));
+        if (field === 'name') {
+            setCreateFormData(prev => ({ ...prev, slug: generateSlug(value) }));
+        }
+    };
+
+    const updateEditForm = (field, value) => {
+        setEditFormData(prev => ({ ...prev, [field]: value }));
     };
 
     return (
@@ -150,7 +203,8 @@ export default function Index({ auth, designs, categories, filters }) {
                                 <h3 className="text-lg font-semibold">Designs de Bordado</h3>
                                 <button
                                     onClick={() => setShowCreateModal(true)}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                                    disabled={isLoading}
+                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
                                 >
                                     Adicionar Novo Design
                                 </button>
@@ -161,25 +215,25 @@ export default function Index({ auth, designs, categories, filters }) {
                                 <input
                                     type="text"
                                     placeholder="Buscar designs..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                     className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                                 <select
-                                    value={category}
-                                    onChange={(e) => setCategory(e.target.value)}
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
                                     className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     <option value="all">Todas as Categorias</option>
-                                    {categories && categories.map((cat) => (
-                                        <option key={cat} value={cat}>
+                                    {categories && categories.map((cat, index) => (
+                                        <option key={index} value={cat}>
                                             {cat}
                                         </option>
                                     ))}
                                 </select>
                                 <select
-                                    value={status}
-                                    onChange={(e) => setStatus(e.target.value)}
+                                    value={selectedStatus}
+                                    onChange={(e) => setSelectedStatus(e.target.value)}
                                     className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     <option value="all">Todos os Status</option>
@@ -188,21 +242,32 @@ export default function Index({ auth, designs, categories, filters }) {
                                 </select>
                                 <button
                                     type="submit"
-                                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+                                    disabled={isLoading}
+                                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
                                 >
-                                    Buscar
+                                    {isLoading ? 'Buscando...' : 'Buscar'}
                                 </button>
                             </form>
 
+                            {/* Loading indicator */}
+                            {isLoading && (
+                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-blue-700">
+                                    Carregando...
+                                </div>
+                            )}
+
                             {/* Designs Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {designs && designs.data && designs.data.map((design) => (
+                                {designs?.data?.map((design) => (
                                     <div key={design.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                                         {design.image_url && (
                                             <img
                                                 src={design.image_url}
                                                 alt={design.name}
                                                 className="w-full h-32 object-cover rounded-md mb-3"
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                }}
                                             />
                                         )}
                                         <div className="flex justify-between items-start mb-2">
@@ -219,19 +284,21 @@ export default function Index({ auth, designs, categories, filters }) {
                                         <div className="flex justify-between items-center mb-3">
                                             <span className="text-sm font-medium text-blue-600">{design.category}</span>
                                             <span className="text-lg font-bold text-green-600">
-                                                R$ {parseFloat(design.additional_cost).toFixed(2)}
+                                                R$ {parseFloat(design.additional_cost || 0).toFixed(2)}
                                             </span>
                                         </div>
                                         <div className="flex space-x-2">
                                             <button
                                                 onClick={() => openEditModal(design)}
-                                                className="flex-1 bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 text-sm rounded"
+                                                disabled={isLoading}
+                                                className="flex-1 bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 text-sm rounded disabled:opacity-50"
                                             >
                                                 Editar
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(design)}
-                                                className="flex-1 bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 text-sm rounded"
+                                                disabled={isLoading}
+                                                className="flex-1 bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 text-sm rounded disabled:opacity-50"
                                             >
                                                 Excluir
                                             </button>
@@ -240,7 +307,7 @@ export default function Index({ auth, designs, categories, filters }) {
                                 ))}
                                 
                                 {/* No designs message */}
-                                {(!designs || !designs.data || designs.data.length === 0) && (
+                                {(!designs?.data || designs.data.length === 0) && !isLoading && (
                                     <div className="col-span-full text-center py-12">
                                         <div className="text-gray-500">
                                             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -256,13 +323,13 @@ export default function Index({ auth, designs, categories, filters }) {
                             </div>
 
                             {/* Pagination */}
-                            {designs && designs.links && (
+                            {designs?.links && (
                                 <div className="mt-6 flex justify-center">
                                     <div className="flex space-x-1">
                                         {designs.links.map((link, index) => (
                                             <Link
                                                 key={index}
-                                                href={link.url}
+                                                href={link.url || '#'}
                                                 className={`px-3 py-2 text-sm rounded ${
                                                     link.active
                                                         ? 'bg-blue-500 text-white'
@@ -292,40 +359,37 @@ export default function Index({ auth, designs, categories, filters }) {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                                         <input
                                             type="text"
-                                            value={createData.name}
-                                            onChange={(e) => {
-                                                setCreateData('name', e.target.value);
-                                                setCreateData('slug', generateSlug(e.target.value));
-                                            }}
+                                            value={createFormData.name}
+                                            onChange={(e) => updateCreateForm('name', e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             required
                                         />
-                                        {createErrors.name && <p className="text-red-500 text-xs mt-1">{createErrors.name}</p>}
+                                        {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
                                         <input
                                             type="text"
-                                            value={createData.slug}
-                                            onChange={(e) => setCreateData('slug', e.target.value)}
+                                            value={createFormData.slug}
+                                            onChange={(e) => updateCreateForm('slug', e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             required
                                         />
-                                        {createErrors.slug && <p className="text-red-500 text-xs mt-1">{createErrors.slug}</p>}
+                                        {formErrors.slug && <p className="text-red-500 text-xs mt-1">{formErrors.slug}</p>}
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                                         <input
                                             type="text"
-                                            value={createData.category}
-                                            onChange={(e) => setCreateData('category', e.target.value)}
+                                            value={createFormData.category}
+                                            onChange={(e) => updateCreateForm('category', e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             placeholder="ex: Animais, Personagens, Brasões"
                                             required
                                         />
-                                        {createErrors.category && <p className="text-red-500 text-xs mt-1">{createErrors.category}</p>}
+                                        {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
                                     </div>
 
                                     <div>
@@ -333,32 +397,32 @@ export default function Index({ auth, designs, categories, filters }) {
                                         <input
                                             type="number"
                                             step="0.01"
-                                            value={createData.additional_cost}
-                                            onChange={(e) => setCreateData('additional_cost', parseFloat(e.target.value) || 0)}
+                                            value={createFormData.additional_cost}
+                                            onChange={(e) => updateCreateForm('additional_cost', parseFloat(e.target.value) || 0)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             required
                                         />
-                                        {createErrors.additional_cost && <p className="text-red-500 text-xs mt-1">{createErrors.additional_cost}</p>}
+                                        {formErrors.additional_cost && <p className="text-red-500 text-xs mt-1">{formErrors.additional_cost}</p>}
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem</label>
                                         <input
                                             type="url"
-                                            value={createData.image_url}
-                                            onChange={(e) => setCreateData('image_url', e.target.value)}
+                                            value={createFormData.image_url}
+                                            onChange={(e) => updateCreateForm('image_url', e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             placeholder="https://exemplo.com/imagem.jpg"
                                         />
-                                        {createErrors.image_url && <p className="text-red-500 text-xs mt-1">{createErrors.image_url}</p>}
+                                        {formErrors.image_url && <p className="text-red-500 text-xs mt-1">{formErrors.image_url}</p>}
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
                                         <input
                                             type="number"
-                                            value={createData.sort_order}
-                                            onChange={(e) => setCreateData('sort_order', parseInt(e.target.value) || 0)}
+                                            value={createFormData.sort_order}
+                                            onChange={(e) => updateCreateForm('sort_order', parseInt(e.target.value) || 0)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
                                     </div>
@@ -367,8 +431,8 @@ export default function Index({ auth, designs, categories, filters }) {
                                 <div className="mt-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                                     <textarea
-                                        value={createData.description}
-                                        onChange={(e) => setCreateData('description', e.target.value)}
+                                        value={createFormData.description}
+                                        onChange={(e) => updateCreateForm('description', e.target.value)}
                                         rows={3}
                                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         placeholder="Descrição do design..."
@@ -378,8 +442,8 @@ export default function Index({ auth, designs, categories, filters }) {
                                 <div className="mt-4 flex items-center">
                                     <input
                                         type="checkbox"
-                                        checked={createData.is_active}
-                                        onChange={(e) => setCreateData('is_active', e.target.checked)}
+                                        checked={createFormData.is_active}
+                                        onChange={(e) => updateCreateForm('is_active', e.target.checked)}
                                         className="mr-2"
                                     />
                                     <label className="text-sm font-medium text-gray-700">Ativo</label>
@@ -391,18 +455,19 @@ export default function Index({ auth, designs, categories, filters }) {
                                     type="button"
                                     onClick={() => {
                                         setShowCreateModal(false);
-                                        resetCreate();
+                                        resetCreateForm();
                                     }}
-                                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                                    disabled={isLoading}
+                                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 disabled:opacity-50"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={createProcessing}
+                                    disabled={isLoading}
                                     className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
                                 >
-                                    {createProcessing ? 'Salvando...' : 'Salvar'}
+                                    {isLoading ? 'Salvando...' : 'Salvar'}
                                 </button>
                             </div>
                         </form>
@@ -423,36 +488,36 @@ export default function Index({ auth, designs, categories, filters }) {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                                         <input
                                             type="text"
-                                            value={editData.name}
-                                            onChange={(e) => setEditData('name', e.target.value)}
+                                            value={editFormData.name || ''}
+                                            onChange={(e) => updateEditForm('name', e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             required
                                         />
-                                        {editErrors.name && <p className="text-red-500 text-xs mt-1">{editErrors.name}</p>}
+                                        {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
                                         <input
                                             type="text"
-                                            value={editData.slug}
-                                            onChange={(e) => setEditData('slug', e.target.value)}
+                                            value={editFormData.slug || ''}
+                                            onChange={(e) => updateEditForm('slug', e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             required
                                         />
-                                        {editErrors.slug && <p className="text-red-500 text-xs mt-1">{editErrors.slug}</p>}
+                                        {formErrors.slug && <p className="text-red-500 text-xs mt-1">{formErrors.slug}</p>}
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                                         <input
                                             type="text"
-                                            value={editData.category}
-                                            onChange={(e) => setEditData('category', e.target.value)}
+                                            value={editFormData.category || ''}
+                                            onChange={(e) => updateEditForm('category', e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             required
                                         />
-                                        {editErrors.category && <p className="text-red-500 text-xs mt-1">{editErrors.category}</p>}
+                                        {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
                                     </div>
 
                                     <div>
@@ -460,31 +525,31 @@ export default function Index({ auth, designs, categories, filters }) {
                                         <input
                                             type="number"
                                             step="0.01"
-                                            value={editData.additional_cost}
-                                            onChange={(e) => setEditData('additional_cost', parseFloat(e.target.value) || 0)}
+                                            value={editFormData.additional_cost || 0}
+                                            onChange={(e) => updateEditForm('additional_cost', parseFloat(e.target.value) || 0)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             required
                                         />
-                                        {editErrors.additional_cost && <p className="text-red-500 text-xs mt-1">{editErrors.additional_cost}</p>}
+                                        {formErrors.additional_cost && <p className="text-red-500 text-xs mt-1">{formErrors.additional_cost}</p>}
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem</label>
                                         <input
                                             type="url"
-                                            value={editData.image_url}
-                                            onChange={(e) => setEditData('image_url', e.target.value)}
+                                            value={editFormData.image_url || ''}
+                                            onChange={(e) => updateEditForm('image_url', e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
-                                        {editErrors.image_url && <p className="text-red-500 text-xs mt-1">{editErrors.image_url}</p>}
+                                        {formErrors.image_url && <p className="text-red-500 text-xs mt-1">{formErrors.image_url}</p>}
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
                                         <input
                                             type="number"
-                                            value={editData.sort_order}
-                                            onChange={(e) => setEditData('sort_order', parseInt(e.target.value) || 0)}
+                                            value={editFormData.sort_order || 0}
+                                            onChange={(e) => updateEditForm('sort_order', parseInt(e.target.value) || 0)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
                                     </div>
@@ -493,8 +558,8 @@ export default function Index({ auth, designs, categories, filters }) {
                                 <div className="mt-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                                     <textarea
-                                        value={editData.description}
-                                        onChange={(e) => setEditData('description', e.target.value)}
+                                        value={editFormData.description || ''}
+                                        onChange={(e) => updateEditForm('description', e.target.value)}
                                         rows={3}
                                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
@@ -503,8 +568,8 @@ export default function Index({ auth, designs, categories, filters }) {
                                 <div className="mt-4 flex items-center">
                                     <input
                                         type="checkbox"
-                                        checked={editData.is_active}
-                                        onChange={(e) => setEditData('is_active', e.target.checked)}
+                                        checked={editFormData.is_active !== false}
+                                        onChange={(e) => updateEditForm('is_active', e.target.checked)}
                                         className="mr-2"
                                     />
                                     <label className="text-sm font-medium text-gray-700">Ativo</label>
@@ -517,18 +582,20 @@ export default function Index({ auth, designs, categories, filters }) {
                                     onClick={() => {
                                         setShowEditModal(false);
                                         setEditingDesign(null);
-                                        resetEdit();
+                                        setEditFormData({});
+                                        setFormErrors({});
                                     }}
-                                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                                    disabled={isLoading}
+                                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 disabled:opacity-50"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={editProcessing}
+                                    disabled={isLoading}
                                     className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
                                 >
-                                    {editProcessing ? 'Salvando...' : 'Salvar'}
+                                    {isLoading ? 'Salvando...' : 'Salvar'}
                                 </button>
                             </div>
                         </form>
