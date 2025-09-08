@@ -86,14 +86,13 @@ export default function Index({ auth, products, categories, filters }) {
     const handleUpdate = (e) => {
         e.preventDefault();
         
-        const formData = {
+        // Always use POST with _method=PUT for consistency
+        post(`/admin/products/${selectedProduct.id}/update`, {
             ...data,
             sizes: JSON.stringify(data.sizes),
             colors: JSON.stringify(data.colors),
             _method: 'PUT'
-        };
-        
-        post(`/admin/products/${selectedProduct.id}`, formData, {
+        }, {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {
