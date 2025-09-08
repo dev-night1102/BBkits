@@ -38,7 +38,7 @@ export default function Index({ auth, designs, categories, filters }) {
         compatible_colors: []
     });
 
-    const deleteForm = useForm();
+    // Removed problematic useForm for delete
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -77,7 +77,16 @@ export default function Index({ auth, designs, categories, filters }) {
     const handleDelete = (design) => {
         if (!design || !design.id) return;
         if (confirm(`Tem certeza que deseja excluir o design "${design.name}"?`)) {
-            deleteForm.delete(route('admin.embroidery.designs.destroy', design.id));
+            router.delete(route('admin.embroidery.designs.destroy', design.id), {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Design deleted successfully
+                },
+                onError: () => {
+                    alert('Erro ao excluir o design');
+                }
+            });
         }
     };
 
