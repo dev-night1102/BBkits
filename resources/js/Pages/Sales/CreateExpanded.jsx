@@ -1082,18 +1082,19 @@ export default function CreateExpanded() {
                                         {errors.received_amount && (
                                             <p className="text-red-500 text-sm mt-1">{errors.received_amount}</p>
                                         )}
-                                        {data.received_amount && data.total_amount && (
-                                            <p className="text-sm text-gray-600 mt-1">
+                                        {/* Simplified payment status message - stable rendering */}
+                                        {data.received_amount && data.total_amount && parseFloat(data.received_amount) > 0 && parseFloat(data.total_amount) > 0 && (
+                                            <div className="text-sm mt-1">
                                                 {parseFloat(data.received_amount) < parseFloat(data.total_amount) ? (
-                                                    <span className="text-orange-600">
+                                                    <div className="text-orange-600">
                                                         ⚠️ Pagamento parcial - Restante: {formatBRL(parseFloat(data.total_amount) - parseFloat(data.received_amount))}
-                                                    </span>
+                                                    </div>
                                                 ) : (
-                                                    <span className="text-green-600">
+                                                    <div className="text-green-600">
                                                         ✅ Pagamento completo
-                                                    </span>
+                                                    </div>
                                                 )}
-                                            </p>
+                                            </div>
                                         )}
                                     </div>
 
