@@ -9,11 +9,12 @@ import { Toaster } from 'react-hot-toast';
 // Import Ziggy for routing
 import { Ziggy } from './ziggy';
 
-// Simple, reliable route helper that returns URL strings for Inertia
+// BULLETPROOF route helper that NEVER returns null and ALWAYS returns an object with method
 function route(name, params = {}, absolute = false) {
-    // Always ensure we have a fallback
-    if (!name) {
-        return '/';
+    // NEVER return null - always return a valid object with method property
+    if (!name || typeof name !== 'string') {
+        console.warn('Invalid route name provided:', name);
+        return createRouteObject('/dashboard', ['GET', 'HEAD']);
     }
 
     let url = '';
@@ -23,7 +24,7 @@ function route(name, params = {}, absolute = false) {
         const routeData = (window.Ziggy && window.Ziggy.routes && window.Ziggy.routes[name]) ||
                          (Ziggy && Ziggy.routes && Ziggy.routes[name]);
 
-        if (routeData) {
+        if (routeData && routeData.uri) {
             url = routeData.uri;
 
             // Replace parameters in the URL
@@ -52,8 +53,13 @@ function route(name, params = {}, absolute = false) {
                     url = baseUrl.replace(/\/$/, '') + url;
                 }
             }
+
+            // Return route object with methods from routeData
+            const methods = routeData.methods || ['GET', 'HEAD'];
+            return createRouteObject(url, methods);
         } else {
             // Fallback: convert route name to URL path
+            console.warn('Route not found in Ziggy, using fallback for:', name);
             if (name.includes('.')) {
                 const parts = name.split('.');
                 if (parts[parts.length - 1] === 'index') {
@@ -65,13 +71,18 @@ function route(name, params = {}, absolute = false) {
             }
         }
     } catch (error) {
-        console.error('Route error:', error);
-        // Emergency fallback
-        url = '/' + name.replace(/\./g, '/');
+        console.error('Route generation error:', error, 'for route:', name);
+        // Emergency fallback - never return null
+        url = '/' + String(name).replace(/\./g, '/');
     }
 
-    // For Inertia Link components, return the URL string
-    return url;
+    // GUARANTEE: always return a valid route object
+    if (!url || typeof url !== 'string') {
+        console.error('Route function would return invalid value:', url, 'for:', name);
+        return createRouteObject('/dashboard', ['GET', 'HEAD']);
+    }
+
+    return createRouteObject(url, ['GET', 'HEAD']);
 }
 
 // Helper function to create consistent route objects
