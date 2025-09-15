@@ -9,32 +9,22 @@ import { Toaster } from 'react-hot-toast';
 // Import Ziggy for routing
 import { Ziggy } from './ziggy';
 
-// Simple, reliable route helper that always returns a valid object
+// Simple, reliable route helper that returns URL strings for Inertia
 function route(name, params = {}, absolute = false) {
-    console.log('ROUTE FUNCTION CALLED:', name, params, absolute);
-
     // Always ensure we have a fallback
     if (!name) {
-        console.log('No name provided, returning fallback');
-        return createRouteObject('/', ['GET', 'HEAD']);
+        return '/';
     }
 
     let url = '';
-    let methods = ['GET', 'HEAD']; // default methods
 
     try {
         // Check for route data in both window.Ziggy and imported Ziggy
         const routeData = (window.Ziggy && window.Ziggy.routes && window.Ziggy.routes[name]) ||
                          (Ziggy && Ziggy.routes && Ziggy.routes[name]);
 
-        console.log('Route data found:', !!routeData, 'for route:', name);
-        if (routeData) {
-            console.log('Route data:', routeData);
-        }
-
         if (routeData) {
             url = routeData.uri;
-            methods = routeData.methods || ['GET', 'HEAD'];
 
             // Replace parameters in the URL
             if (params && typeof params === 'object') {
@@ -63,7 +53,6 @@ function route(name, params = {}, absolute = false) {
                 }
             }
         } else {
-            console.log('No route data found, using fallback for:', name);
             // Fallback: convert route name to URL path
             if (name.includes('.')) {
                 const parts = name.split('.');
@@ -81,8 +70,7 @@ function route(name, params = {}, absolute = false) {
         url = '/' + name.replace(/\./g, '/');
     }
 
-    // For Inertia Link components, just return the URL string
-    console.log('ROUTE RESULT URL:', url, 'type:', typeof url);
+    // For Inertia Link components, return the URL string
     return url;
 }
 
