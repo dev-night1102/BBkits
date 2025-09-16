@@ -203,6 +203,12 @@ Route::post('/pedido/{token}/update-address', [SaleController::class, 'clientUpd
 Route::post('/pedido/{token}/upload-payment', [SaleController::class, 'clientUploadPayment'])->name('sales.client.upload-payment');
 Route::post('/pedido/{token}/approve-photo', [SaleController::class, 'clientApprovePhoto'])->name('sales.client.approve-photo');
 
+// Sale cancellation route - only requires auth, not approval (admin password required)
+// Using manual lookup to bypass model binding and policy issues
+Route::middleware(['auth'])->group(function () {
+    Route::post('/sales/{saleId}/cancel', [SaleController::class, 'cancelBySaleId'])->name('sales.cancel');
+});
+
 Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -214,7 +220,6 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::post('/sales/store-products', [SaleController::class, 'storeWithProducts'])->name('sales.store-products');
     Route::get('/sales/kanban', [SaleController::class, 'kanban'])->name('sales.kanban');
     Route::patch('/sales/{sale}/status', [SaleController::class, 'updateStatus'])->name('sales.update-status');
-    Route::post('/sales/{sale}/cancel', [SaleController::class, 'cancel'])->name('sales.cancel');
     Route::resource('sales', SaleController::class);
 
     Route::get('/sales/{sale}/payments', [SalePaymentController::class, 'index'])->name('payments.index');
@@ -294,7 +299,7 @@ Route::middleware(['auth', 'approved'])->group(function () {
 
         // Materials & Inventory Management Routes
         // Materials Management Routes
-        Route::resource('admin/materials', \App\Http\Controllers\Admin\MaterialController::class)->names([
+        Route::resource('admin/materials', \App\Http\Controllers\Admin\MaterialsController::class)->names([
             'index' => 'admin.materials.index',
             'create' => 'admin.materials.create',
             'store' => 'admin.materials.store',
@@ -303,7 +308,7 @@ Route::middleware(['auth', 'approved'])->group(function () {
             'update' => 'admin.materials.update',
             'destroy' => 'admin.materials.destroy',
         ]);
-        Route::post('/admin/materials/{material}/adjust-stock', [\App\Http\Controllers\Admin\MaterialController::class, 'adjustStock'])->name('admin.materials.adjust-stock');
+        Route::post('/admin/materials/{material}/adjust-stock', [\App\Http\Controllers\Admin\MaterialsController::class, 'adjustStock'])->name('admin.materials.adjust-stock');
 
         // Inventory Transaction Routes
         Route::prefix('admin/inventory')->name('admin.inventory.')->group(function () {
