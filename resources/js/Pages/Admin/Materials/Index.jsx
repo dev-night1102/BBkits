@@ -7,7 +7,7 @@ export default function Index({ materials, filters, stats }) {
     const { auth } = usePage().props;
     const user = auth.user;
     const [search, setSearch] = useState(filters.search || '');
-    const [status, setStatus] = useState(filters.status || '');
+    const [status, setStatus] = useState(filters.stock_status || '');
 
     // Permission helpers
     const canEditMaterials = () => {
@@ -20,7 +20,7 @@ export default function Index({ materials, filters, stats }) {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        router.get('/admin/materials', { search, status }, { preserveState: true });
+        router.get('/admin/materials', { search, stock_status: status }, { preserveState: true });
     };
 
     const getStockBadge = (material) => {
@@ -158,9 +158,9 @@ export default function Index({ materials, filters, stats }) {
                                         className="w-full rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                                     >
                                         <option value="">Todos os status</option>
-                                        <option value="active">Ativos</option>
-                                        <option value="low_stock">Estoque Baixo</option>
-                                        <option value="out_of_stock">Sem Estoque</option>
+                                        <option value="ok">Estoque Normal</option>
+                                        <option value="low">Estoque Baixo</option>
+                                        <option value="out">Sem Estoque</option>
                                     </select>
                                 </div>
                                 <div>
@@ -180,6 +180,9 @@ export default function Index({ materials, filters, stats }) {
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        ID
+                                    </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Material
                                     </th>
@@ -203,6 +206,9 @@ export default function Index({ materials, filters, stats }) {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {materials.data.map((material) => (
                                     <tr key={material.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-medium text-gray-900">#{material.id}</div>
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div>
                                                 <div className="text-sm font-medium text-gray-900">{material.name}</div>
