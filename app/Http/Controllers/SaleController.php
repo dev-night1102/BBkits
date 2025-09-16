@@ -740,16 +740,11 @@ class SaleController extends Controller
 
     public function cancel(Request $request, Sale $sale)
     {
-        // Any authenticated user can request cancellation, but admin password is required for authorization
-        // Note: We don't use $this->authorize() here because authorization is done via admin password check
+        // Explicitly authorize using the 'cancel' policy method
+        $this->authorize('cancel', $sale);
 
-        Log::info('Cancel method called', [
-            'sale_id' => $sale->id,
-            'user_id' => auth()->id(),
-            'user_email' => auth()->user()->email,
-            'request_method' => $request->method(),
-            'request_data' => $request->all()
-        ]);
+        // Simple test - always log when method is called
+        \Log::emergency('CANCEL METHOD CALLED - Sale ID: ' . $sale->id . ' - User: ' . auth()->user()->email);
 
         $validated = $request->validate([
             'admin_password' => 'required|string',
