@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import toast from 'react-hot-toast';
 
 export default function Index({ materials, filters, stats }) {
     const { auth } = usePage().props;
@@ -12,10 +11,6 @@ export default function Index({ materials, filters, stats }) {
     // Permission helpers
     const canEditMaterials = () => {
         return ['admin', 'manager', 'production_admin'].includes(user.role);
-    };
-
-    const canManageMaterials = () => {
-        return ['admin', 'manager'].includes(user.role);
     };
 
     const handleSearch = (e) => {
