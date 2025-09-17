@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -77,11 +77,23 @@ export default function Index({ sales }) {
     };
 
     const handleApprove = (sale) => {
-        post(route('admin.sales.approve', sale.id), {
+        console.log('handleApprove called with sale:', sale);
+        console.log('sale.id:', sale.id);
+
+        if (!sale.id) {
+            toast.error('Erro: ID da venda não encontrado');
+            return;
+        }
+
+        const url = `/admin/sales/${sale.id}/approve`;
+        console.log('Approving sale with URL:', url);
+
+        router.post(url, {}, {
             onSuccess: () => {
                 toast.success('Venda aprovada com sucesso! 🎉');
             },
-            onError: () => {
+            onError: (errors) => {
+                console.error('Approval error:', errors);
                 toast.error('Erro ao aprovar venda.');
             }
         });
@@ -94,7 +106,7 @@ export default function Index({ sales }) {
 
     const submitRejection = (e) => {
         e.preventDefault();
-        post(route('admin.sales.reject', selectedSale.id), {
+        post(`/admin/sales/${selectedSale.id}/reject`, {
             onSuccess: () => {
                 toast.success('Venda recusada com sucesso.');
                 setShowRejectModal(false);
@@ -682,7 +694,7 @@ export default function Index({ sales }) {
                                                                 <td className="px-6 py-4 text-sm font-medium">
                                                                     <div className="flex flex-wrap gap-1">
                                                                         <Link 
-                                                                            href={route('sales.show', sale.id)}
+                                                                            href={`/sales/${sale.id}`}
                                                                             className="action-btn action-btn-view"
                                                                         >
                                                                             <i className="fas fa-eye mr-1"></i>
