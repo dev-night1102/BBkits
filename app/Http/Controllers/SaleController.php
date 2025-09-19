@@ -523,8 +523,24 @@ class SaleController extends Controller
             $minimumRequired = $totalOrderAmount * 0.5; // 50% minimum
             $receivedAmount = (float) ($sale->received_amount ?? 0);
 
+            // DEBUG: Log the values
+            \Log::info('PAYMENT VALIDATION DEBUG', [
+                'sale_id' => $sale->id,
+                'total_amount' => $sale->total_amount,
+                'shipping_amount' => $sale->shipping_amount,
+                'totalOrderAmount' => $totalOrderAmount,
+                'minimumRequired' => $minimumRequired,
+                'receivedAmount' => $receivedAmount,
+                'validation_check' => $receivedAmount < $minimumRequired ? 'SHOULD_BLOCK' : 'SHOULD_ALLOW'
+            ]);
+
             if ($receivedAmount < $minimumRequired) {
                 DB::rollBack();
+                \Log::info('PAYMENT BLOCKED - Insufficient payment', [
+                    'sale_id' => $sale->id,
+                    'required' => $minimumRequired,
+                    'received' => $receivedAmount
+                ]);
                 return back()->withErrors([
                     'error' => sprintf(
                         'Pagamento insuficiente para aprovação. Mínimo de 50%% necessário: %s (Enviado: %s)',
