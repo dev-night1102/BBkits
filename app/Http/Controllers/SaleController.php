@@ -512,12 +512,28 @@ class SaleController extends Controller
         
         try {
             DB::beginTransaction();
-            
+
             // Verify sale is still pending
             if ($sale->status !== 'pendente') {
                 throw new \Exception('Sale is no longer pending approval');
             }
-            
+
+            // Validate minimum payment requirement (50% rule)
+            $totalOrderAmount = $sale->total_amount + ($sale->shipping_amount ?? 0);
+            $minimumRequired = $totalOrderAmount * 0.5; // 50% minimum
+            $receivedAmount = (float) ($sale->received_amount ?? 0);
+
+            if ($receivedAmount < $minimumRequired) {
+                DB::rollBack();
+                return back()->withErrors([
+                    'error' => sprintf(
+                        'Pagamento insuficiente para aprovação. Mínimo de 50%% necessário: %s (Enviado: %s)',
+                        'R$ ' . number_format($minimumRequired, 2, ',', '.'),
+                        'R$ ' . number_format($receivedAmount, 2, ',', '.')
+                    )
+                ]);
+            }
+
             $sale->update([
                 'status' => 'aprovado',
                 'order_status' => 'payment_approved', // Move to new workflow
